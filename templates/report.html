@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Результат сканирования</title>
+<style>__STYLE__</style></head><body><div class="wrap">
+<header><div><h1>Результат сканирования</h1><div class="subtitle">Источник: __SOURCE__</div></div>
+<div class="header-actions"><div class="pill">Автономный отчёт · без сервера</div>
+<button class="widget-button" id="widgetsButton" type="button" aria-expanded="false">Виджеты ▾</button>
+<div class="widget-menu" id="widgetsMenu" hidden><button class="widget-option" id="overviewWidgetButton" type="button">Обзор: хосты и критичность</button><button class="widget-option" id="allVulnerabilitiesButton" type="button">Все уязвимости</button><button class="widget-option" id="networkViolationsButton" type="button">Сетевые нарушения</button></div></div></header>
+<section class="dashboard" id="overviewView">
+  <section class="widget-panel"><div class="widget-panel-header"><h2>Перечень хостов</h2></div><div class="host-count" id="hostCount"></div><div class="host-list" id="hostList"></div></section>
+  <section class="widget-panel"><div class="widget-panel-header"><h2>Уязвимости по критичности</h2></div><div class="chart-description">Распределение по оценке CVSS</div><div class="chart-wrap"><svg id="severityChart" viewBox="0 0 360 280" role="img" aria-label="Круговая диаграмма уязвимостей по критичности"></svg></div></section>
+</section>
+<div id="allVulnerabilitiesView" hidden>
+<section class="stats">
+<div class="stat"><div class="stat-label">Всего записей</div><div class="stat-value" id="total">0</div></div>
+<div class="stat"><div class="stat-label">Критических (CVSS ≥ 9)</div><div class="stat-value" id="critical">0</div></div>
+<div class="stat"><div class="stat-label">Высоких (CVSS 7–8.9)</div><div class="stat-value" id="high">0</div></div>
+<div class="stat"><div class="stat-label">С эксплойтом</div><div class="stat-value" id="exploits">0</div></div>
+</section>
+<section class="toolbar">
+<input id="search" type="search" placeholder="Поиск по всем столбцам…" autocomplete="off">
+<select id="severity"><option value="">Все уровни CVSS</option><option value="critical">Критический</option><option value="high">Высокий</option><option value="medium">Средний</option><option value="low">Низкий</option><option value="unknown">Не указан</option></select>
+<select id="exploit"><option value="">Эксплойт: любой</option><option value="yes">Есть</option><option value="no">Нет</option><option value="unknown">Не указано</option></select>
+<select id="host"><option value="">Все хосты</option></select></section>
+<section class="table-shell"><div class="table-meta"><span id="shown">Показано 0 из 0</span><span>Нажмите на заголовок для сортировки</span></div>
+<div class="table-scroll"><table><colgroup><col style="width:13%"><col style="width:21%"><col style="width:18%"><col style="width:8%"><col style="width:29%"><col style="width:11%"></colgroup>
+<thead><tr><th data-key="host">Хост ↕</th><th data-key="vulnerability">Уязвимость ↕</th><th data-key="entity">Уязвимая сущность ↕</th><th data-key="cvss">CVSS ↕</th><th data-key="remediation">Как устранить ↕</th><th data-key="exploit">Есть эксплойт ↕</th></tr></thead><tbody id="rows"></tbody></table><div class="empty" id="empty" hidden>По заданным условиям ничего не найдено.</div></div></section>
+</div>
+<!-- Отдельный виджет для строк, у которых заполнено поле endpoint. -->
+<div id="networkViolationsView" hidden>
+  <section class="widget-panel">
+    <div class="widget-panel-header"><h2>Сетевые нарушения</h2></div>
+    <div class="chart-description" id="networkSummary">Уязвимости, связанные с сетевыми настройками (endpoint заполнен).</div>
+    <section class="table-shell"><div class="table-meta"><span id="networkShown">Показано 0</span><span>В таблицу попадают строки с непустым endpoint</span></div>
+    <div class="table-scroll"><table><colgroup><col style="width:13%"><col style="width:23%"><col style="width:14%"><col style="width:8%"><col style="width:31%"><col style="width:11%"></colgroup>
+    <thead><tr><th>Хост</th><th>Уязвимость</th><th>Уязвимая сущность / endpoint</th><th>CVSS</th><th>Как устранить</th><th>Есть эксплойт</th></tr></thead><tbody id="networkRows"></tbody></table><div class="empty" id="networkEmpty" hidden>В CSV нет записей с заполненным endpoint.</div></div></section>
+  </section>
+</div>
+<footer>Сгенерировано из CSV. Все фильтры и поиск работают локально в браузере.</footer></div>
+<script>__SCRIPT__</script></body></html>
