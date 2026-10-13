@@ -13,10 +13,7 @@ def build_report(rows: list[dict[str, Any]], destination: Path, source_name: str
         records.append({
             "host": str(row.get("Хост", "")),
             "vulnerability": str(row.get("Уязвимость", "")),
-            # For network findings the entity is often blank; show endpoint (usually a port) instead.
-            "entity": str(row.get("Уязвимая сущность", "")).strip() or str(row.get("endpoint", "")).strip(),
-            # Keep endpoint separately so the network widget can identify these rows.
-            "endpoint": str(row.get("endpoint", "")).strip(),
+            "entity": str(row.get("Уязвимая сущность", "")).strip(),
             "cvss": row.get("_cvss"),
             "cvss_raw": str(row.get("CVSS", "")),
             "remediation": str(row.get("Как устранить", "")),

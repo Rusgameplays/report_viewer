@@ -5,12 +5,30 @@
 <header><div><h1>Результат сканирования</h1><div class="subtitle">Источник: __SOURCE__</div></div>
 <div class="header-actions"><div class="pill">Автономный отчёт · без сервера</div>
 <button class="widget-button" id="widgetsButton" type="button" aria-expanded="false">Виджеты ▾</button>
-<div class="widget-menu" id="widgetsMenu" hidden><button class="widget-option" id="overviewWidgetButton" type="button">Обзор: хосты и критичность</button><button class="widget-option" id="allVulnerabilitiesButton" type="button">Все уязвимости</button><button class="widget-option" id="networkViolationsButton" type="button">Сетевые нарушения</button></div></div></header>
+<div class="widget-menu" id="widgetsMenu" hidden><button class="widget-option" id="overviewWidgetButton" type="button">Обзор: хосты и критичность</button><button class="widget-option" id="allVulnerabilitiesButton" type="button">Все уязвимости</button><button class="widget-option" id="networkViolationsButton" type="button">Результат по итогам пентеста</button></div></div></header>
 <section class="dashboard" id="overviewView">
   <section class="widget-panel"><div class="widget-panel-header"><h2>Перечень хостов</h2></div><div class="host-count" id="hostCount"></div><div class="host-list" id="hostList"></div></section>
   <section class="widget-panel"><div class="widget-panel-header"><h2>Уязвимости по критичности</h2></div><div class="chart-description">Распределение по оценке CVSS</div><div class="chart-wrap"><svg id="severityChart" viewBox="0 0 360 280" role="img" aria-label="Круговая диаграмма уязвимостей по критичности"></svg></div></section>
 </section>
+<section class="recommendations" id="reportRequirements">
+  <div class="recommendations-heading"><span class="recommendations-kicker">Итоговые действия</span><h2>Для получения акта нужно как минимум:</h2></div>
+  <div class="recommendations-grid">
+    <details class="recommendation-card recommendation-details">
+      <summary><h3><span class="action-mark update-mark">↑</span>Обновить</h3><span class="collapse-indicator" aria-hidden="true">＋</span></summary>
+      <div class="recommendation-content"><p class="recommendation-hint">Уникальные уязвимые сущности, для которых найден хотя бы один эксплойт или в названии уязвимости указано «Неподдерживаемое ПО».</p><ul id="updateList" class="requirement-list"></ul><div id="updateEmpty" class="requirement-empty" hidden>Нет сущностей, требующих обновления по этим условиям.</div></div>
+    </details>
+    <details class="recommendation-card recommendation-details">
+      <summary><h3><span class="action-mark fix-mark">!</span>Устранить</h3><span class="collapse-indicator" aria-hidden="true">＋</span></summary>
+      <div class="recommendation-content"><p class="recommendation-hint">Нарушения из раздела «Результат по итогам пентеста».</p><ul id="fixList" class="requirement-list"></ul><div id="fixEmpty" class="requirement-empty" hidden>Результатов пентеста нет.</div></div>
+    </details>
+  </div>
+</section>
+<section id="largeDatasetGuidance" class="large-dataset-guidance" hidden aria-live="polite">
+  <div class="large-dataset-warning" role="note"><h2>Уязвимостей слишком много. Для получения полного списка уязвимостей - устраните критичные!</h2></div>
+  <h2 class="compliance-guidance">Для получения статуса Соответствует устраните ВСЕ замечания из виджета Список уязвимостей</h2>
+</section>
 <div id="allVulnerabilitiesView" hidden>
+<div class="chart-description" id="largeDatasetNotice" hidden>В файле более 3500 записей. Для удобной работы показаны только уязвимости, для которых указан эксплойт.</div>
 <section class="stats">
 <div class="stat"><div class="stat-label">Всего записей</div><div class="stat-value" id="total">0</div></div>
 <div class="stat"><div class="stat-label">Критических (CVSS ≥ 9)</div><div class="stat-value" id="critical">0</div></div>
@@ -26,14 +44,14 @@
 <div class="table-scroll"><table><colgroup><col style="width:13%"><col style="width:21%"><col style="width:18%"><col style="width:8%"><col style="width:29%"><col style="width:11%"></colgroup>
 <thead><tr><th data-key="host">Хост ↕</th><th data-key="vulnerability">Уязвимость ↕</th><th data-key="entity">Уязвимая сущность ↕</th><th data-key="cvss">CVSS ↕</th><th data-key="remediation">Как устранить ↕</th><th data-key="exploit">Есть эксплойт ↕</th></tr></thead><tbody id="rows"></tbody></table><div class="empty" id="empty" hidden>По заданным условиям ничего не найдено.</div></div></section>
 </div>
-<!-- Отдельный виджет для строк, у которых заполнено поле endpoint. -->
+<!-- Результаты пентеста: строки без указанной уязвимой сущности. -->
 <div id="networkViolationsView" hidden>
   <section class="widget-panel">
-    <div class="widget-panel-header"><h2>Сетевые нарушения</h2></div>
-    <div class="chart-description" id="networkSummary">Уязвимости, связанные с сетевыми настройками (endpoint заполнен).</div>
-    <section class="table-shell"><div class="table-meta"><span id="networkShown">Показано 0</span><span>В таблицу попадают строки с непустым endpoint</span></div>
+    <div class="widget-panel-header"><h2>Результат по итогам пентеста</h2></div>
+    <div class="chart-description" id="networkSummary">Записи, в которых не указана уязвимая сущность.</div>
+    <section class="table-shell"><div class="table-meta"><span id="networkShown">Показано 0</span><span>В таблицу попадают строки без уязвимой сущности</span></div>
     <div class="table-scroll"><table><colgroup><col style="width:13%"><col style="width:23%"><col style="width:14%"><col style="width:8%"><col style="width:31%"><col style="width:11%"></colgroup>
-    <thead><tr><th>Хост</th><th>Уязвимость</th><th>Уязвимая сущность / endpoint</th><th>CVSS</th><th>Как устранить</th><th>Есть эксплойт</th></tr></thead><tbody id="networkRows"></tbody></table><div class="empty" id="networkEmpty" hidden>В CSV нет записей с заполненным endpoint.</div></div></section>
+    <thead><tr><th>Хост</th><th>Уязвимость</th><th>Уязвимая сущность</th><th>CVSS</th><th>Как устранить</th><th>Есть эксплойт</th></tr></thead><tbody id="networkRows"></tbody></table><div class="empty" id="networkEmpty" hidden>Нет записей без указанной уязвимой сущности.</div></div></section>
   </section>
 </div>
 <footer>Сгенерировано из CSV. Все фильтры и поиск работают локально в браузере.</footer></div>

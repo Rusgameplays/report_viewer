@@ -18,8 +18,6 @@ HEADER_ALIASES = {
     "есть эксплойт": "Есть эксплойт",
     "есть ли эксплойт": "Есть эксплойт",
     "эксплойт": "Есть эксплойт",
-    # Endpoint is optional: a non-empty value marks a network-related finding.
-    "endpoint": "endpoint",
 }
 
 def normalize_header(value: str) -> str:
@@ -72,8 +70,6 @@ def read_csv_file(path: Path) -> list[dict[str, Any]]:
     for line_no, raw_row in enumerate(reader, start=2):
         row = {canonical: (raw_row.get(original) or "").strip()
                for original, canonical in mapped.items()}
-        # endpoint is optional, so older CSV files continue to work unchanged.
-        row["endpoint"] = (row.get("endpoint", "") or "").strip()
         if not any(row.get(col, "") for col in REQUIRED_COLUMNS):
             continue
         cvss_raw = row.get("CVSS", "")
@@ -142,8 +138,9 @@ def main() -> None:
             return
         loaded_rows, loaded_path = rows, Path(filename)
         selected_path.set(str(loaded_path))
-        network_count = sum(bool(str(row.get("endpoint", "")).strip()) for row in loaded_rows)
-        status_text.set(f"Загружено записей: {len(loaded_rows)}; с заполненным endpoint: {network_count}")
+        pentest_count = sum(not str(row.get("Уязвимая сущность", "")).strip() for row in loaded_rows)
+        mode = "; включён режим только с эксплойтами" if len(loaded_rows) > 3500 else ""
+        status_text.set(f"Загружено записей: {len(loaded_rows)}; результатов пентеста без уязвимой сущности: {pentest_count}{mode}")
         generate_button.configure(state="normal")
 
     ttk.Button(controls, text="Выбрать CSV…", command=choose_file, style="Action.TButton").pack(side="left")
@@ -180,8 +177,8 @@ def main() -> None:
     ttk.Label(
         info,
         text=("Обязательные столбцы: Хост, Уязвимость, Уязвимая сущность, CVSS, Как устранить, Есть эксплойт.\n"
-              "Необязательный столбец endpoint (регистр букв не важен): если он заполнен, запись попадёт в виджет «Сетевые нарушения».\n"
-              "В таблице всех уязвимостей endpoint отображается в поле «Уязвимая сущность», если оно пустое.\n"
+              "Строки без значения в столбце «Уязвимая сущность» попадут в виджет «Результат по итогам пентеста».\n"
+              "Если записей больше 3500, вместо полного списка доступен список только уязвимостей с эксплойтами.\n"
               "Поддерживаются разделители запятая, точка с запятой и табуляция; кодировки UTF-8 и Windows-1251.\n"
               "Для эксплойта подходят значения Да/Нет, Есть/Нет, True/False, 1/0."),
         wraplength=740, justify="left"

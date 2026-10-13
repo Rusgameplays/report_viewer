@@ -1,15 +1,16 @@
-const DATA=__DATA__;const $=id=>document.getElementById(id);let sortKey="cvss",sortDir=-1;
+const DATA=__DATA__;const $=id=>document.getElementById(id);let sortKey="cvss",sortDir=-1;const LARGE_DATASET=DATA.length>3500;
 // Преобразует числовую оценку CVSS в категорию критичности. Пороги можно изменить здесь.
 function severity(s){if(s===null||s===undefined)return"unknown";if(s<4)return"low";if(s<7)return"medium";if(s<9)return"high";return"critical"}
 function exploitKey(v){return v===true?"yes":v===false?"no":"unknown"}
 function safe(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 // Начальная настройка отчёта: сводные числа, список хостов, диаграмма и обработчики интерфейса.
 function init(){
+if(LARGE_DATASET){$("allVulnerabilitiesButton").textContent="Только с эксплойтами";$("largeDatasetNotice").hidden=false;$("largeDatasetGuidance").hidden=false;}
 $("total").textContent=DATA.length;$("critical").textContent=DATA.filter(x=>x.cvss!==null&&x.cvss>=9).length;
 $("high").textContent=DATA.filter(x=>x.cvss!==null&&x.cvss>=7&&x.cvss<9).length;$("exploits").textContent=DATA.filter(x=>x.exploit===true).length;
 const hosts=[...new Set(DATA.map(x=>String(x.host??"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ru"));
 for(const host of hosts){const o=document.createElement("option");o.value=host;o.textContent=host;$("host").appendChild(o)}
-renderHostList(hosts);drawSeverityChart();
+renderHostList(hosts);drawSeverityChart();renderRequirements();
 document.querySelectorAll("th[data-key]").forEach(th=>th.addEventListener("click",()=>{const key=th.dataset.key;sortDir=sortKey===key?-sortDir:(key==="cvss"?-1:1);sortKey=key;render()}));
 ["search","severity","exploit","host"].forEach(id=>$(id).addEventListener(id==="search"?"input":"change",render));
 $("widgetsButton").addEventListener("click",toggleWidgetsMenu);
@@ -21,7 +22,32 @@ render()}
 function renderHostList(hosts){
  const list=$("hostList");list.replaceChildren();$("hostCount").textContent=`Всего уникальных хостов: ${hosts.length}`;
  if(!hosts.length){const item=document.createElement("div");item.className="host-item";item.textContent="Хосты не найдены.";list.appendChild(item);return}
- hosts.forEach(host=>{const item=document.createElement("div");item.className="host-item";item.textContent=host;list.appendChild(item)})
+ const target=list;
+ if(hosts.length>25){
+   const details=document.createElement("details");details.className="hosts-details";
+   const summary=document.createElement("summary");summary.textContent=`Показать список хостов (${hosts.length})`;
+   const contents=document.createElement("div");contents.className="hosts-details-list";
+   details.append(summary,contents);target.appendChild(details);
+   hosts.forEach(host=>{const item=document.createElement("div");item.className="host-item";item.textContent=host;contents.appendChild(item)});
+ }else{
+   hosts.forEach(host=>{const item=document.createElement("div");item.className="host-item";item.textContent=host;target.appendChild(item)});
+ }
+}
+// Формирует обязательные действия для итогового акта.
+function renderRequirements(){
+ const updateEntities=new Set();
+ DATA.forEach(x=>{
+   const entity=String(x.entity??"").trim();
+   const unsupported=String(x.vulnerability??"").toLocaleLowerCase("ru").includes("неподдерживаемое по");
+   if(entity&&(x.exploit===true||unsupported)) updateEntities.add(entity);
+ });
+ const updateList=$("updateList");updateList.replaceChildren();
+ [...updateEntities].sort((a,b)=>a.localeCompare(b,"ru")).forEach(entity=>{const li=document.createElement("li");li.textContent=entity;updateList.appendChild(li)});
+ $("updateEmpty").hidden=updateEntities.size!==0;
+ const fixRows=DATA.filter(x=>!String(x.entity??"").trim());
+ const fixList=$("fixList");fixList.replaceChildren();
+ fixRows.forEach(x=>{const li=document.createElement("li");li.className="fix-item";const title=document.createElement("strong");title.textContent=String(x.vulnerability??"").trim()||"Нарушение без названия";li.appendChild(title);const detail=[String(x.host??"").trim(),String(x.remediation??"").trim()].filter(Boolean);if(detail.length){const small=document.createElement("div");small.className="fix-detail";small.textContent=detail.join(" — ");li.appendChild(small)}fixList.appendChild(li)});
+ $("fixEmpty").hidden=fixRows.length!==0;
 }
 // Рисует круговую диаграмму и выносит число для каждого сектора наружу.
 // Чтобы изменить подписи или цвета, редактируйте массив buckets ниже.
@@ -90,11 +116,11 @@ function hideAllViews(){
 function showOverview(){hideAllViews();$("overviewView").hidden=false;closeWidgetsMenu()}
 function showAllVulnerabilities(){hideAllViews();$("allVulnerabilitiesView").hidden=false;closeWidgetsMenu()}
 function showNetworkViolations(){hideAllViews();$("networkViolationsView").hidden=false;renderNetworkViolations();closeWidgetsMenu()}
-// Render only records with a non-empty endpoint. The entity column already falls back to endpoint.
+// В результат пентеста попадают строки, где уязвимая сущность не заполнена.
 function renderNetworkViolations(){
-  const networkRows=DATA.filter(x=>String(x.endpoint??"").trim()!=="");
-  $("networkShown").textContent=`Сетевых нарушений: ${networkRows.length}`;
-  $("networkSummary").textContent=`Найдено записей с заполненным endpoint: ${networkRows.length}`;
+  const networkRows=DATA.filter(x=>!String(x.entity??"").trim());
+  $("networkShown").textContent=`Результатов пентеста: ${networkRows.length}`;
+  $("networkSummary").textContent=`Найдено результатов пентеста: ${networkRows.length}`;
   $("networkRows").innerHTML=networkRows.map(x=>{
     const sev=severity(x.cvss);
     const exploit=x.exploit===true?'<span class="exploit exploit-yes">Есть</span>':x.exploit===false?'<span class="exploit exploit-no">Нет</span>':'<span class="exploit exploit-unknown">Не указано</span>';
@@ -107,10 +133,11 @@ function closeWidgetsMenu(){$("widgetsMenu").hidden=true;$("widgetsButton").setA
 // Фильтрует, сортирует и выводит строки таблицы во вкладке «Все уязвимости».
 function render(){
 const q=$("search").value.trim().toLocaleLowerCase("ru"),sf=$("severity").value,ef=$("exploit").value,hf=$("host").value;
-const filtered=DATA.filter(x=>{const hay=[x.host,x.vulnerability,x.entity,x.endpoint,x.cvss_raw,x.remediation,x.exploit===true?"да есть true":x.exploit===false?"нет false":"не указано"].join(" ").toLocaleLowerCase("ru");
+const sourceRows=LARGE_DATASET?DATA.filter(x=>x.exploit===true):DATA;
+const filtered=sourceRows.filter(x=>{const hay=[x.host,x.vulnerability,x.entity,x.cvss_raw,x.remediation,x.exploit===true?"да есть true":x.exploit===false?"нет false":"не указано"].join(" ").toLocaleLowerCase("ru");
 return(!q||hay.includes(q))&&(!sf||severity(x.cvss)===sf)&&(!ef||exploitKey(x.exploit)===ef)&&(!hf||x.host===hf)});
 filtered.sort((a,b)=>{let av=a[sortKey],bv=b[sortKey];if(sortKey==="exploit"){av=exploitKey(av);bv=exploitKey(bv)}if(sortKey==="cvss"){av=av??-1;bv=bv??-1;return(av-bv)*sortDir}return String(av??"").localeCompare(String(bv??""),"ru",{numeric:true})*sortDir});
 $("rows").innerHTML=filtered.map(x=>{const sev=severity(x.cvss),exploit=x.exploit===true?'<span class="exploit exploit-yes">Есть</span>':x.exploit===false?'<span class="exploit exploit-no">Нет</span>':'<span class="exploit exploit-unknown">Не указано</span>',score=x.cvss===null?"—":safe(x.cvss_raw||x.cvss);
 return `<tr><td class="host">${safe(x.host)}</td><td class="vuln">${safe(x.vulnerability)}</td><td class="entity">${safe(x.entity)}</td><td><span class="score ${sev}">${score}</span></td><td class="remediation">${safe(x.remediation)}</td><td>${exploit}</td></tr>`}).join("");
-$("shown").textContent=`Показано ${filtered.length} из ${DATA.length}`;$("empty").hidden=filtered.length!==0}
+$("shown").textContent=`Показано ${filtered.length} из ${sourceRows.length}`;$("empty").hidden=filtered.length!==0}
 init();
