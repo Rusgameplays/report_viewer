@@ -35,19 +35,49 @@ function renderHostList(hosts){
 }
 // Формирует обязательные действия для итогового акта.
 function renderRequirements(){
- const updateEntities=new Set();
+ // Внутри каждого действия создаём отдельный блок для каждого хоста.
+ const updateByHost=new Map();
  DATA.forEach(x=>{
    const entity=String(x.entity??"").trim();
    const unsupported=String(x.vulnerability??"").toLocaleLowerCase("ru").includes("неподдерживаемое по");
-   if(entity&&(x.exploit===true||unsupported)) updateEntities.add(entity);
+   if(!entity||!(x.exploit===true||unsupported)) return;
+   const host=String(x.host??"").trim()||"Хост не указан";
+   if(!updateByHost.has(host)) updateByHost.set(host,new Set());
+   updateByHost.get(host).add(entity);
  });
  const updateList=$("updateList");updateList.replaceChildren();
- [...updateEntities].sort((a,b)=>a.localeCompare(b,"ru")).forEach(entity=>{const li=document.createElement("li");li.textContent=entity;updateList.appendChild(li)});
- $("updateEmpty").hidden=updateEntities.size!==0;
- const fixRows=DATA.filter(x=>!String(x.entity??"").trim());
+ [...updateByHost.keys()].sort((a,b)=>a.localeCompare(b,"ru")).forEach(host=>{
+   const group=document.createElement("li");group.className="host-action-group";
+   const details=document.createElement("details");details.className="host-action-details";
+   const heading=document.createElement("summary");heading.className="host-action-heading";heading.textContent=host;
+   const list=document.createElement("ul");list.className="host-action-items";
+   [...updateByHost.get(host)].sort((a,b)=>a.localeCompare(b,"ru")).forEach(entity=>{const li=document.createElement("li");li.textContent=entity;list.appendChild(li)});
+   details.append(heading,list);group.appendChild(details);updateList.appendChild(group);
+ });
+ $("updateEmpty").hidden=updateByHost.size!==0;
+
+ const fixByHost=new Map();
+ DATA.filter(x=>!String(x.entity??"").trim()).forEach(x=>{
+   const host=String(x.host??"").trim()||"Хост не указан";
+   if(!fixByHost.has(host)) fixByHost.set(host,[]);
+   fixByHost.get(host).push(x);
+ });
  const fixList=$("fixList");fixList.replaceChildren();
- fixRows.forEach(x=>{const li=document.createElement("li");li.className="fix-item";const title=document.createElement("strong");title.textContent=String(x.vulnerability??"").trim()||"Нарушение без названия";li.appendChild(title);const detail=[String(x.host??"").trim(),String(x.remediation??"").trim()].filter(Boolean);if(detail.length){const small=document.createElement("div");small.className="fix-detail";small.textContent=detail.join(" — ");li.appendChild(small)}fixList.appendChild(li)});
- $("fixEmpty").hidden=fixRows.length!==0;
+ [...fixByHost.keys()].sort((a,b)=>a.localeCompare(b,"ru")).forEach(host=>{
+   const group=document.createElement("li");group.className="host-action-group";
+   const details=document.createElement("details");details.className="host-action-details";
+   const heading=document.createElement("summary");heading.className="host-action-heading";heading.textContent=host;
+   const list=document.createElement("ul");list.className="host-action-items fix-host-items";
+   fixByHost.get(host).forEach(x=>{
+     const li=document.createElement("li");li.className="fix-item";
+     const title=document.createElement("strong");title.textContent=String(x.vulnerability??"").trim()||"Нарушение без названия";li.appendChild(title);
+     const detail=[String(x.remediation??"").trim()].filter(Boolean);
+     if(detail.length){const small=document.createElement("div");small.className="fix-detail";small.textContent=detail.join(" — ");li.appendChild(small)}
+     list.appendChild(li);
+   });
+   details.append(heading,list);group.appendChild(details);fixList.appendChild(group);
+ });
+ $("fixEmpty").hidden=fixByHost.size!==0;
 }
 // Рисует круговую диаграмму и выносит число для каждого сектора наружу.
 // Чтобы изменить подписи или цвета, редактируйте массив buckets ниже.
